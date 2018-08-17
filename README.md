@@ -78,4 +78,4 @@ Using SWI-Prolog 6.3.16 or later:
     1 ?- pack_install(mavis).
 
 Source code available and pull requests accepted on GitHub:
-https://github.com/mndrix/mavis
+https://github.com/GavinMendelGleason/mavis/
