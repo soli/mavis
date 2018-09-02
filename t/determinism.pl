@@ -79,11 +79,18 @@ unit(X, Y) :-
     Y = [X].
 
 /** 
- * multi(X) is multi.
+ * multi(-X) is multi.
+ * multi(+X) is semidet.
  */ 
-multi(X) :- member(X,[1,2,3]).
+multi(X) :- member(X,[1,2,3,1,2,3]).
 multi(X) :- X = 4.
 
+
+/** 
+ * not_multi(+X) is multi.
+ * not_multi(-X) is multi.
+ */
+not_multi(X) :- member(X,[1,2,1,2,3]).
 
 testing :-
     unit(1,_),

@@ -42,7 +42,7 @@ user:goal_expansion(the(_,_), true).
 
 :- use_module(library(apply), [exclude/3]).
 :- use_module(library(charsio), [read_term_from_chars/3]).
-:- use_module(library(list_util), [xfy_list/3]).
+:- use_module(library(list_util), [xfy_list/3,split_at/4]).
 :- use_module(library(pldoc)).
 :- use_module(library(pldoc/doc_wiki), [indented_lines/3]).
 :- use_module(library(when), [when/2]).
@@ -55,20 +55,26 @@ mode_declaration(Comment, ModeCodes) :-
     indented_lines(Codes, Prefixes, Lines),
     pldoc_modes:mode_lines(Lines, ModeCodes, [], _).
 
-exhaustive_read_term(Stream,[Term|Terms]) :-
-    Options = [module(pldoc_modes), variable_names(Vars)],
-    read_term(Stream,Term,Options),
+exhaustive_read_term(Codes,[Term|Terms]) :-
+    Options = [module(pldoc_modes),
+               variable_names(Vars),
+               subterm_positions(Pos)],
+    read_term_from_chars(Codes,Term,Options),
+    (   Pos=term_position(_, End, _, _, _)
+    ->  true
+    ;   Pos=_-End),
+    debug(mavis,'term ~q~n', [Term]),
     Term \= end_of_file,
     !,
     maplist(call,Vars),
-    exhaustive_read_term(Stream,Terms).
-exhaustive_read_term(_Stream,[]).
-    
-% read a raw mode declaration from character codes
+    Next is End + 2, % one for 0 offset, one for '.'
+    split_at(Next,Codes,_,NewCodes),
+    exhaustive_read_term(NewCodes,Terms).
+exhaustive_read_term(_Codes,[]).
+
+% read all mode declarations from character codes
 read_mode_declarations(ModeCodes, Modes) :-
-    open_chars_stream(ModeCodes,Stream),
-    exhaustive_read_term(Stream, Modes),
-    close(Stream).
+    exhaustive_read_term(ModeCodes, Modes).
 
 % convert mode declarations to a standard form
 normalize_mode(Mode0, Args, Det) :-
@@ -109,12 +115,15 @@ build_type_assertions(Slash, Head, TypeGoal) :-
     %debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, ModeText]),
     % Warning: Potential bug!!!
     % We assume type consistency between modes...
+    debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, ModeText]),
     read_mode_declarations(ModeText, [RawMode|_]),
+    debug(mavis, "~q has types from `~q`~n", [Module:Indicator, RawMode]),
     normalize_mode(RawMode, ModeArgs, _Determinism),
 
     Head =.. [Name|HeadArgs],
     maplist(type_declaration, HeadArgs, ModeArgs, AllTypes),
     exclude(=@=(the(any, _)), AllTypes, Types),
+    debug(mavis, "Processed types `~q`~n", [Types]),
     xfy_list(',', TypeGoal, Types).
 
 build_determinism_assertions(Goal,Wrapped) :-
@@ -187,11 +196,9 @@ run_goal_with_determinism(semidet,Module,Goal) :-
     ).
 run_goal_with_determinism(multi,Module,Goal) :-
     !,
-    findnsols(1,Module:Goal,Module:Goal,Res),
-    length(Res,N),
-    (   N = 0
+    (   \+ call(Module:Goal)
     ->  throw(assertion_error(invalid_determinism(Module:Goal,multi)))
-    ;   member(Module:Goal,Res)
+    ;   call(Module:Goal)
     ).
 run_goal_with_determinism(_,Module,Goal) :-
     call(Module:Goal).
