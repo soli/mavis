@@ -15,8 +15,7 @@ types.  A typical development environment converts this into a helpful
 stack track which assists in locating the error.
 
 In *production*, the declarations are completely removed by macros
-and do nothing.  Production time
-is defined as any time when optimization is enabled:
+and do nothing.  Production time is defined as any time when optimization is enabled:
 `current_prolog_flag(optimise, true)`.
 
 Type declarations can be give manually by calling the/2.  `mavis` also inserts
@@ -27,10 +26,20 @@ example, during development, the definition of `even` above becomes
         the(integer, A),
         0 is A mod 2.
 
+The library also takes into account groundedness and determinsm as
+specified in the mode line given to PlDoc. Currently the library recognises
+
+    failure,semidet,det,multi,nondet
+
+The groundedness currently must be one of:
+
+    +,?,-
+
 ## Why?
 
 We love dynamic types. That's one reason we love Prolog. But
-sometimes more precise types are a helpful tool.  They can:
+sometimes it is useful to distinguish between a failure, and an
+incorrect utlisation of the calling contract. Types can:
 
   * offer documentation to those reading our code
   * help find errors during development
@@ -69,7 +78,16 @@ have no runtime overhead.
 # Changes in this Version
 
   * Fix packaging error
+  * Add determinism checking
+  * Add groundedness checking
 
+# TODO
+
+In future versions we hope to incorporate a gradual typing discipline
+using abstract interpretation. This will allow static checking to find
+type and determinacy errors before we have run the program. Ultimately
+it may also provide performance improvements.
+  
 # Installation
 
 Using SWI-Prolog 6.3.16 or later:

@@ -3,6 +3,8 @@
                  , has_subtype/2
                  , known_type/1
                  , build_type_assertions/3
+                 , build_determinism_assertions/2
+                 , run_goal_at_mode/4
                  ]).
 
 
@@ -53,11 +55,20 @@ mode_declaration(Comment, ModeCodes) :-
     indented_lines(Codes, Prefixes, Lines),
     pldoc_modes:mode_lines(Lines, ModeCodes, [], _).
 
-% read a raw mode declaration from character codes
-read_mode_declaration(ModeCodes, Mode) :-
+exhaustive_read_term(Stream,[Term|Terms]) :-
     Options = [module(pldoc_modes), variable_names(Vars)],
-    read_term_from_chars(ModeCodes, Mode, Options),
-    maplist(call,Vars).
+    read_term(Stream,Term,Options),
+    Term \= end_of_file,
+    !,
+    maplist(call,Vars),
+    exhaustive_read_term(Stream,Terms).
+exhaustive_read_term(_Stream,[]).
+    
+% read a raw mode declaration from character codes
+read_mode_declarations(ModeCodes, Modes) :-
+    open_chars_stream(ModeCodes,Stream),
+    exhaustive_read_term(Stream, Modes),
+    close(Stream).
 
 % convert mode declarations to a standard form
 normalize_mode(Mode0, Args, Det) :-
@@ -96,13 +107,94 @@ build_type_assertions(Slash, Head, TypeGoal) :-
     % parse and normalize mode description
     mode_declaration(Comment, ModeText),
     %debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, ModeText]),
-    read_mode_declaration(ModeText, RawMode),
+    % Warning: Potential bug!!!
+    % We assume type consistency between modes...
+    read_mode_declarations(ModeText, [RawMode|_]),
     normalize_mode(RawMode, ModeArgs, _Determinism),
 
     Head =.. [Name|HeadArgs],
     maplist(type_declaration, HeadArgs, ModeArgs, AllTypes),
     exclude(=@=(the(any, _)), AllTypes, Types),
     xfy_list(',', TypeGoal, Types).
+
+build_determinism_assertions(Goal,Wrapped) :-
+    % does this module want mavis type assertions?
+    prolog_load_context(module, Module),
+    mavis:module_wants_mavis(Module),
+    
+    % fetch this predicate's structured comment
+    functor(Goal, Name, Arity),
+    Indicator =.. ['/', Name, Arity],
+
+    pldoc_process:doc_comment(Module:Indicator,_,_,Comment),
+    
+    % parse and normalize mode description
+    mode_declaration(Comment, ModeText),
+    read_mode_declarations(ModeText, RawModes),
+    maplist([RawMode,mode(ModeArgs,Determinism)]>>normalize_mode(RawMode, ModeArgs, Determinism),
+            RawModes,Modes),
+    %%debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, Modes]),        
+    % We should really check for mode consistency here.
+    
+    Goal =.. [Name|Args],
+    Wrapped = mavis:run_goal_at_mode(Module,Name,Modes,Args).
+
+pre_check_groundedness(arg('+',_,_),Arg) :-
+    ground(Arg).
+pre_check_groundedness(arg('-',_,_),_Arg).        
+pre_check_groundedness(arg('?',_,_),_Arg).
+
+post_check_groundedness(arg('+',_,_),_Arg).
+post_check_groundedness(arg('?',_,_),_Arg).
+post_check_groundedness(arg('-',_,_),Arg) :-
+    ground(Arg).
+
+choose_mode([mode(Mode,Determinism)|_Modes],Args,_Module,_Name,mode(Mode,Determinism)) :-
+    maplist(pre_check_groundedness,Mode,Args), !.
+choose_mode([_|Modes],Args,Module,Name,Mode) :-
+    choose_mode(Modes,Args,Module,Name,Mode).
+choose_mode([],Args,Module,Name,_) :-
+    throw(assertion_error(no_valid_mode(Module:Name,Args))).
+        
+run_goal_at_mode(Module,Name,Modes,Args) :-
+    Goal =.. [Name|Args],
+    choose_mode(Modes,Args,Module,Name,mode(Mode,Determinism)),
+    run_goal_with_determinism(Determinism,Module,Goal),
+    (   maplist(post_check_groundedness,Mode,Args)
+    ->  true
+    ;   throw(assertion_error(invalid_mode(Module:Name,Mode,Args)))).
+
+run_goal_with_determinism(failure,Module,Goal) :-
+    !,
+    call(Module:Goal),
+    throw(assertion_error(invalid_determinism(Module:Goal,failure))).
+run_goal_with_determinism(det,Module,Goal) :-
+    !,
+    findnsols(2,Module:Goal,Module:Goal,Res),
+    (   length(Res,1)
+    ->  member(Module:Goal,Res)
+    ;   throw(assertion_error(invalid_determinism(Module:Goal,det)))
+    ).
+run_goal_with_determinism(semidet,Module,Goal) :-
+    !,
+    findnsols(2,Module:Goal,Module:Goal,Res),
+    length(Res,N),
+    (   N = 0
+    ->  fail
+    ;   N = 1
+    ->  member(Module:Goal,Res)
+    ;   throw(assertion_error(invalid_determinism(Module:Goal,semidet)))
+    ).
+run_goal_with_determinism(multi,Module,Goal) :-
+    !,
+    findnsols(1,Module:Goal,Module:Goal,Res),
+    length(Res,N),
+    (   N = 0
+    ->  throw(assertion_error(invalid_determinism(Module:Goal,multi)))
+    ;   member(Module:Goal,Res)
+    ).
+run_goal_with_determinism(_,Module,Goal) :-
+    call(Module:Goal).
 
 bodyless_predicate(Term) :-
     \+ Term = (:-_),
@@ -122,6 +214,19 @@ user:term_expansion(Head,(Head:-TypeGoal)) :-
 user:term_expansion((Head-->Body), (Head-->{TypeGoal},Body)) :-
     Slash = '//',
     build_type_assertions(Slash, Head, TypeGoal).
+
+% TODO:
+% We need to check mode assignments and discover if they are
+% A) disjoint
+%    a) if they are disjoint we need to check groundedness
+%       1) Add dynamic check groudedness.
+%       2) Do a separate determinism check per groudedness.
+%    b) Throw runtime error if not disjoint.
+% 
+user:goal_expansion(Goal,Wrapped) :-
+    build_determinism_assertions(Goal,Wrapped),
+    debug(mavis,'~q => ~q~n', [Goal,Wrapped]).
+
 
 :- endif.
 
