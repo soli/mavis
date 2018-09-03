@@ -29,11 +29,29 @@ example, during development, the definition of `even` above becomes
 The library also takes into account groundedness and determinsm as
 specified in the mode line given to PlDoc. Currently the library recognises
 
-    failure,semidet,det,multi,nondet
+    `failure`,`semidet`,`det`,`multi`,`nondet`
+
+The different determinism qualifiers are interpreted as follows:
+
+* `failure`: 0 solutions
+* `semidet`: 0 or 1 solution
+* `det`: 1 solution
+* `multi`: more than one solution
+* `nondet`: Any number of solutions including 0
 
 The groundedness currently must be one of:
 
-    +,?,-
+    `+`,`?`,`-`
+
+These are interpreted as follows:
+
+* `+` means *completely* ground on entry.
+* `?` means either ground, unground or mixed
+* `-` means variable.
+
+These form a lattice and ultimately can be used to select the most
+specific mode, however, currently mode selection simply uses the
+*first* mode which matches.
 
 ## Why?
 
@@ -83,11 +101,39 @@ have no runtime overhead.
 
 # TODO
 
+There should be a less ad-hoc method of mode selection. It would also
+be useful to extend the groundedness criteria 
+
 In future versions we hope to incorporate a gradual typing discipline
-using abstract interpretation. This will allow static checking to find
-type and determinacy errors before we have run the program. Ultimately
-it may also provide performance improvements.
-  
+using abstract interpretation. This could potentially find type,
+groundedness and determinacy errors before we have run the
+program. Ultimately it may also provide performance improvements.
+
+It would also be very nice to include polymorphism, however, this
+requires that we have some way to select a type. As there is no
+principle typing, this is potentially a (very interesting) can of
+worms.
+
+Also of some interest would be dependent type checking, which at least
+in the dynamic case, might be tractable.
+
+# Issues
+
+When using metapredicates such as maplist, goal expansion will get
+confused and generate incorrect clauses unless the predicate has the
+appropriate number of arguments. This can be achieved by wrapping the
+call in a suitable lambda form. e.g. If p is given a modeline then:
+
+```
+maplist(p,Xs,Ys)
+```
+
+should be replaced with:
+
+```
+maplist([X,Y]>>(p(X,Y)),Xs,Ys
+```
+
 # Installation
 
 Using SWI-Prolog 6.3.16 or later:

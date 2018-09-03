@@ -55,15 +55,19 @@ mode_declaration(Comment, ModeCodes) :-
     indented_lines(Codes, Prefixes, Lines),
     pldoc_modes:mode_lines(Lines, ModeCodes, [], _).
 
+% There may be more varieties of this that we have to handle
+% see read_term/2
+end_pos(Pos,End) :- 
+    (   Pos=term_position(_, End, _, _, _)
+    ->  true
+    ;   Pos=_-End).
+
 exhaustive_read_term(Codes,[Term|Terms]) :-
     Options = [module(pldoc_modes),
                variable_names(Vars),
                subterm_positions(Pos)],
     read_term_from_chars(Codes,Term,Options),
-    (   Pos=term_position(_, End, _, _, _)
-    ->  true
-    ;   Pos=_-End),
-    debug(mavis,'term ~q~n', [Term]),
+    end_pos(Pos,End),
     Term \= end_of_file,
     !,
     maplist(call,Vars),
@@ -115,7 +119,7 @@ build_type_assertions(Slash, Head, TypeGoal) :-
     %debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, ModeText]),
     % Warning: Potential bug!!!
     % We assume type consistency between modes...
-    debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, ModeText]),
+    %debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, ModeText]),
     read_mode_declarations(ModeText, [RawMode|_]),
     debug(mavis, "~q has types from `~q`~n", [Module:Indicator, RawMode]),
     normalize_mode(RawMode, ModeArgs, _Determinism),
@@ -123,7 +127,6 @@ build_type_assertions(Slash, Head, TypeGoal) :-
     Head =.. [Name|HeadArgs],
     maplist(type_declaration, HeadArgs, ModeArgs, AllTypes),
     exclude(=@=(the(any, _)), AllTypes, Types),
-    debug(mavis, "Processed types `~q`~n", [Types]),
     xfy_list(',', TypeGoal, Types).
 
 build_determinism_assertions(Goal,Wrapped) :-
@@ -140,6 +143,8 @@ build_determinism_assertions(Goal,Wrapped) :-
     % parse and normalize mode description
     mode_declaration(Comment, ModeText),
     read_mode_declarations(ModeText, RawModes),
+    % fail if there are no mode declarations (to leave the goal unchanged)
+    \+ RawModes = [],
     maplist([RawMode,mode(ModeArgs,Determinism)]>>normalize_mode(RawMode, ModeArgs, Determinism),
             RawModes,Modes),
     %%debug(mavis, "~q has modeline `~s`~n", [Module:Indicator, Modes]),        
