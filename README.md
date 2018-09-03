@@ -143,3 +143,8 @@ Using SWI-Prolog 6.3.16 or later:
 
 Source code available and pull requests accepted on GitHub:
 https://github.com/mndrix/mavis
+
+# Authors
+
+Michael Hendricks <michael@ndrix.org>
+Gavin Mendel-Gleason <gavin@datachemist.com>
