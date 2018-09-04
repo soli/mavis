@@ -50,13 +50,13 @@ These are interpreted as follows:
       this provides no checkable information.
 * `?` means either ground, unground or mixed. If it is not a variable,
       we will demote the determinism
-** `det` => `semidet`
-** `multi` => `nondet`
+	  1. `det` => `semidet`
+	  2. `multi` => `nondet`
 * `--` means variable input, and type compatible output.
 * `-` means an output parameter. The output should be compatible with the type.
       If it is not a variable, we will demote the determinism
-** `det` => `semidet`
-** `multi` => `nondet`
+      1. `det` => `semidet`
+	  2. `multi` => `nondet`
 * `:` means a goal. Currently no checking is done.
 * `@` means not further bound than on input. Currently no checking is done.
 * `!` means side-effectable variable. Currently no checking is done.
