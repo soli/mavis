@@ -29,7 +29,7 @@ example, during development, the definition of `even` above becomes
 The library also takes into account groundedness and determinsm as
 specified in the mode line given to PlDoc. Currently the library recognises
 
-    `failure`,`semidet`,`det`,`multi`,`nondet`
+    `erroneous`, `failure`,`semidet`,`det`,`multi`,`nondet`
 
 The different determinism qualifiers are interpreted as follows:
 

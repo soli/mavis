@@ -188,6 +188,7 @@ demote(multi,1,nondet).
 demote(fail,1,fail).
 demote(semidet,1,semidet).
 demote(nondet,1,nondet).
+demote(erroneous,1,erroneous).
 demote(X,0,X).
 
 choose_mode([mode(Mode,Determinism)|_Modes],Args,_Module,_Name,
@@ -209,6 +210,9 @@ run_goal_at_mode(Module,Name,Modes,Args) :-
     ->  true
     ;   throw(mode_error(Modes,apply(Module:Name,Args)))).
 
+run_goal_with_determinism(erroneous,Module,Goal) :-
+    !,
+    throw(determinism_error(Module:Goal,erroneous)).
 run_goal_with_determinism(failure,Module,Goal) :-
     !,
     call(Module:Goal),
