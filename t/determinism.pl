@@ -73,7 +73,7 @@ elt(X,L) :-
     member(X,L).
 
 /** 
- * unit(+X:A,-Y:list(A)) is det.
+ * unit(+X,-Y:list) is det.
  */ 
 unit(X, Y) :-
     Y = [X].
@@ -92,9 +92,28 @@ multi(X) :- X = 4.
  */
 not_multi(X) :- member(X,[1,2,1,2,3]).
 
+/** 
+ * test_demotion(+X:integer,-Y:integer) is det
+ */
+test_demotion(X,Y) :-
+    Y is X-1.
+
+/** 
+ * test_demotionless(+X:integer,--Y:integer) is det
+ */
+test_demotionless(X,Y) :-
+    Y is X-1.
+
+
 testing :-
     unit(1,_),
-    dependent_type(4, 2, 5),
     something(2,_),
     back_and_forth([1,2,3],_),
-    first_string(["asdf","fdsa"],_).
+    first_string(["asdf","fdsa"],_),
+    test_demotion(1,_),
+    (   test_demotion(1,2)
+    ;   true).
+
+
+
+

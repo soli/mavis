@@ -91,7 +91,7 @@ normalize_mode(Mode0, Args, Det) :-
 normalize_args(X0, arg(Mode,Name,Type)) :-
     ( var(X0) -> X1 = ?(X0:any) ; X1=X0 ),
     ( X1 =.. [Mode0,Arg] -> true; Mode0='?', Arg=X1 ),
-    ( member(Mode0, [+,-,?,:,@,!]) -> Mode=Mode0; Mode='?' ),
+    ( member(Mode0, [++,+,-,--,?,:,@,!]) -> Mode=Mode0; Mode='?' ),
     ( nonvar(Arg), Arg=Name:Type -> true; Name=Arg, Type=any).
 
 the(Type, Value) :-
@@ -153,56 +153,84 @@ build_determinism_assertions(Goal,Wrapped) :-
     Goal =.. [Name|Args],
     Wrapped = mavis:run_goal_at_mode(Module,Name,Modes,Args).
 
-pre_check_groundedness(arg('+',_,_),Arg) :-
+% pre_check_groundedness(arg(Groundedness,_,Type),Arg,Demote) is det.
+% Promote holds a 0 or 1 depending on whether we should demote
+% in the event of increased nondeterminism.
+pre_check_groundedness(arg('++',_,_),Arg,0) :-
     ground(Arg).
-pre_check_groundedness(arg('-',_,_),_Arg).        
-pre_check_groundedness(arg('?',_,_),_Arg).
+pre_check_groundedness(arg('+',_,Type),Arg,0) :-
+    % This will be type checked too late due to suspension
+    % unless we do it now.
+    % Double negation avoids bindings.
+    \+ \+ error:has_type(Type,Arg).
+pre_check_groundedness(arg('-',_,_),Arg,Demote) :-
+    (   var(Arg)
+    ->  Demote = 0
+    ;   Demote = 1).
+pre_check_groundedness(arg('--',_,_),Arg,0) :-
+    var(Arg).
+pre_check_groundedness(arg('?',_,_),_Arg,0).
+pre_check_groundedness(arg(':',_,_),_Arg,0).
+pre_check_groundedness(arg('!',_,_),_Arg,0).
+pre_check_groundedness(arg('@',_,_),_Arg,0).
 
-post_check_groundedness(arg('+',_,_),_Arg).
-post_check_groundedness(arg('?',_,_),_Arg).
-post_check_groundedness(arg('-',_,_),Arg) :-
-    ground(Arg).
+post_check_groundedness(arg('-',_,Type),Arg) :-
+    !, \+ \+ error:has_type(Type,Arg).
+post_check_groundedness(arg('--',_,Type),Arg) :-
+    !, \+ \+ error:has_type(Type,Arg).
+post_check_groundedness(arg(_,_,_),_Arg).
 
-choose_mode([mode(Mode,Determinism)|_Modes],Args,_Module,_Name,mode(Mode,Determinism)) :-
-    maplist(pre_check_groundedness,Mode,Args), !.
+demote(det,1,semidet).
+demote(multi,1,nondet).
+demote(fail,1,fail).
+demote(semidet,1,semidet).
+demote(nondet,1,nondet).
+demote(X,0,X).
+
+choose_mode([mode(Mode,Determinism)|_Modes],Args,_Module,_Name,
+            mode(Mode,DeterminismPrime)) :-
+    maplist(pre_check_groundedness,Mode,Args,DemotionVotes),
+    foldl([X,Y,R]>>(R is X \/ Y),DemotionVotes,0,Demote),
+    demote(Determinism,Demote,DeterminismPrime),
+    !.
 choose_mode([_|Modes],Args,Module,Name,Mode) :-
     choose_mode(Modes,Args,Module,Name,Mode).
-choose_mode([],Args,Module,Name,_) :-
-    throw(assertion_error(no_valid_mode(Module:Name,Args))).
         
 run_goal_at_mode(Module,Name,Modes,Args) :-
     Goal =.. [Name|Args],
-    choose_mode(Modes,Args,Module,Name,mode(Mode,Determinism)),
+    (   choose_mode(Modes,Args,Module,Name,mode(Mode,Determinism))
+    ->  true
+    ;   throw(mode_error(Modes,apply(Module:Name,Args)))),
     run_goal_with_determinism(Determinism,Module,Goal),
     (   maplist(post_check_groundedness,Mode,Args)
     ->  true
-    ;   throw(assertion_error(invalid_mode(Module:Name,Mode,Args)))).
+    ;   throw(mode_error(Modes,apply(Module:Name,Args)))).
 
 run_goal_with_determinism(failure,Module,Goal) :-
     !,
     call(Module:Goal),
-    throw(assertion_error(invalid_determinism(Module:Goal,failure))).
+    throw(determinism_error(Module:Goal,failure)).
 run_goal_with_determinism(det,Module,Goal) :-
     !,
     findnsols(2,Module:Goal,Module:Goal,Res),
     (   length(Res,1)
     ->  member(Module:Goal,Res)
-    ;   throw(assertion_error(invalid_determinism(Module:Goal,det)))
+    ;   throw(determinism_error(Module:Goal,det))
     ).
 run_goal_with_determinism(semidet,Module,Goal) :-
     !,
-    findnsols(2,Module:Goal,Module:Goal,Res),
+    findnsols(3,Module:Goal,Module:Goal,Res),
     length(Res,N),
     (   N = 0
     ->  fail
     ;   N = 1
     ->  member(Module:Goal,Res)
-    ;   throw(assertion_error(invalid_determinism(Module:Goal,semidet)))
+    ;   throw(determinism_error(Module:Goal,semidet))
     ).
 run_goal_with_determinism(multi,Module,Goal) :-
     !,
     (   \+ call(Module:Goal)
-    ->  throw(assertion_error(invalid_determinism(Module:Goal,multi)))
+    ->  throw(determinism_error(Module:Goal,multi))
     ;   call(Module:Goal)
     ).
 run_goal_with_determinism(_,Module,Goal) :-
@@ -239,6 +267,13 @@ user:goal_expansion(Goal,Wrapped) :-
     build_determinism_assertions(Goal,Wrapped),
     debug(mavis,'~q => ~q~n', [Goal,Wrapped]).
 
+:- multifile prolog:message//1.
+prolog:message(determinism_error(Goal, Det)) -->
+    [ 'The Goal ~q is not of determinism ~q'-[Goal,Det]].
+prolog:message(domain_error(Domain, Term)) -->
+    [ 'The term ~q is not of domain ~q'-[Term,Domain]].
+prolog:message(mode_error(Mode, Term)) -->
+    [ 'The term ~q does not have a valid mode in ~q'-[Term,Mode]].
 
 :- endif.
 
