@@ -169,7 +169,7 @@ pre_check_groundedness(arg('-',_,_),Arg,Demote) :-
     ;   Demote = 1).
 pre_check_groundedness(arg('--',_,_),Arg,0) :-
     var(Arg).
-pre_check_groundedness(arg('?',_,_),_Arg,Demote) :-
+pre_check_groundedness(arg('?',_,_),Arg,Demote) :-
     (   var(Arg)
     ->  Demote = 0
     ;   Demote = 1).

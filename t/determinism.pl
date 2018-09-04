@@ -104,6 +104,12 @@ test_demotion(X,Y) :-
 test_demotionless(X,Y) :-
     Y is X-1.
 
+/** 
+ * ignore something(+X) is det.  
+ * 
+ */ 
+something(X) :-
+    X = 1.
 
 testing :-
     unit(1,_),
