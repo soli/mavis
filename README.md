@@ -49,19 +49,17 @@ These are interpreted as follows:
 * `+` means ground in a way compatible with type declaration. For `any`,
       this provides no checkable information.
 * `?` means either ground, unground or mixed
+* `--` means variable input, and type compatible output.
 * `-` means an output parameter. If it is not a variable, we will demote
       the determinism (`det` => `semidet`, `multi` => `nondet`).  The
 	  output should be compatible with the type.
-* `--` means variable input, and type compatible output.
 * `:` means a goal. Currently no checking is done.
 * `@` means not further bound than on input. Currently no checking is done.
 * `!` means side-effectable variable. Currently no checking is done.
 
-Comp
-
-These form a lattice and ultimately can be used to select the most
-specific mode, however, currently mode selection simply uses the
-*first* mode which matches.
+"Compatibility" means that running the double-negated type over the
+variable is successful, i.e. the input structure which is defined does
+not contradict the type. 
 
 ## Why?
 
