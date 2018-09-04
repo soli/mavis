@@ -41,13 +41,23 @@ The different determinism qualifiers are interpreted as follows:
 
 The groundedness currently must be one of:
 
-    `+`,`?`,`-`
+    `++`,`+`,`?`,`--`,`-`,`:`,`@`
 
 These are interpreted as follows:
 
-* `+` means *completely* ground on entry.
+* `++` means *completely* ground on entry.
+* `+` means ground in a way compatible with type declaration. For `any`,
+      this provides no checkable information.
 * `?` means either ground, unground or mixed
-* `-` means variable.
+* `-` means an output parameter. If it is not a variable, we will demote
+      the determinism (`det` => `semidet`, `multi` => `nondet`).  The
+	  output should be compatible with the type.
+* `--` means variable input, and type compatible output.
+* `:` means a goal. Currently no checking is done.
+* `@` means not further bound than on input. Currently no checking is done.
+* `!` means side-effectable variable. Currently no checking is done.
+
+Comp
 
 These form a lattice and ultimately can be used to select the most
 specific mode, however, currently mode selection simply uses the
@@ -146,5 +156,5 @@ https://github.com/GavinMendelGleason/mavis
 
 # Authors
 
-Michael Hendricks <michael@ndrix.org>
-Gavin Mendel-Gleason <gavin@datachemist.com>
+* Michael Hendricks <michael@ndrix.org>
+* Gavin Mendel-Gleason <gavin@datachemist.com>
