@@ -38,6 +38,10 @@ module_wants_mavis(Module) :-
 the(_,_).  % avoid "Exported procedure mavis:the/2 is not defined"
 user:goal_expansion(the(_,_), true).
 
+build_determinism_assertions(_,_) :- fail.  
+build_type_assertions(_,_,_) :- fail.  
+run_goal_at_mode(_,_,_,_) :- fail.
+
 :- else.
 
 :- use_module(library(apply), [exclude/3]).
