@@ -223,20 +223,23 @@ run_goal_with_determinism(failure,Module,Goal) :-
     throw(determinism_error(Module:Goal,failure)).
 run_goal_with_determinism(det,Module,Goal) :-
     !,
-    findnsols(2,Module:Goal,Module:Goal,Res),
-    (   length(Res,1)
-    ->  member(Module:Goal,Res)
-    ;   throw(determinism_error(Module:Goal,det))
+    (   call_cleanup(Module:Goal, Det=true),
+        (   Det == true
+        ->  true
+        ;   throw(detreminism_error(Module:Goal, det))
+        )
+    ->  true
+    ;   throw(detreminism_error(Module:Goal, det))
     ).
 run_goal_with_determinism(semidet,Module,Goal) :-
     !,
-    findnsols(3,Module:Goal,Module:Goal,Res),
-    length(Res,N),
-    (   N = 0
-    ->  fail
-    ;   N = 1
-    ->  member(Module:Goal,Res)
-    ;   throw(determinism_error(Module:Goal,semidet))
+    (   call_cleanup(Module:Goal, Det=true),
+        (   Det == true
+        ->  true
+        ;   throw(detreminism_error(Module:Goal, semidet))
+        )
+    ->  true
+    ;   fail
     ).
 run_goal_with_determinism(multi,Module,Goal) :-
     !,
