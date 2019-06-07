@@ -160,13 +160,18 @@ build_determinism_assertions(Goal,Wrapped) :-
 % pre_check_groundedness(arg(Groundedness,_,Type),Arg,Demote) is det.
 % Promote holds a 0 or 1 depending on whether we should demote
 % in the event of increased nondeterminism.
-pre_check_groundedness(arg('++',_,_),Arg,0) :-
-    ground(Arg).
+pre_check_groundedness(arg('++',_,Type),Arg,0) :-
+    ground(Arg),
+    (   \+ error:has_type(Type,Arg)
+    ->  throw(domain_error(Type,Arg))
+    ;   true).
 pre_check_groundedness(arg('+',_,Type),Arg,0) :-
     % This will be type checked too late due to suspension
     % unless we do it now.
-    % Double negation avoids bindings.
-    \+ \+ error:has_type(Type,Arg).
+    % (negation avoids bindings)
+    (   \+ error:has_type(Type,Arg)
+    ->  throw(domain_error(Type,Arg))
+    ;   true).
 pre_check_groundedness(arg('-',_,_),Arg,Demote) :-
     (   var(Arg)
     ->  Demote = 0
@@ -182,9 +187,15 @@ pre_check_groundedness(arg('!',_,_),_Arg,0).
 pre_check_groundedness(arg('@',_,_),_Arg,0).
 
 post_check_groundedness(arg('-',_,Type),Arg) :-
-    !, \+ \+ error:has_type(Type,Arg).
+    !,
+    (   \+ error:has_type(Type,Arg)
+    ->  throw(domain_error(Type,Arg))
+    ;   true).
 post_check_groundedness(arg('--',_,Type),Arg) :-
-    !, \+ \+ error:has_type(Type,Arg).
+    !,
+    (   \+ error:has_type(Type,Arg)
+    ->  throw(domain_error(Type,Arg))
+    ;   true).
 post_check_groundedness(arg(_,_,_),_Arg).
 
 demote(det,1,semidet).
@@ -285,7 +296,7 @@ user:goal_expansion(Goal,Wrapped) :-
 prolog:message(determinism_error(Goal, Det)) -->
     [ 'The Goal ~q is not of determinism ~q'-[Goal,Det]].
 prolog:message(domain_error(Domain, Term)) -->
-    [ 'The term ~q is not of domain ~q'-[Term,Domain]].
+    [ 'The term ~q is not in the domain ~q'-[Term,Domain]].
 prolog:message(mode_error(Mode, Term)) -->
     [ 'The term ~q does not have a valid mode in ~q'-[Term,Mode]].
 

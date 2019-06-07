@@ -21,3 +21,23 @@ from_name(Codes, Atom, Extra) :-
 
 %% lazy(Foo)
 lazy(_).
+
+/** 
+ * elt(+X,List) is nondet.
+ * elt(-X,+List) is nondet.
+ * 
+ * Two modelines with no typing information
+ */
+elt(X,L) :-
+    member(X,L).
+
+/** 
+ * elt_det(+X:integer,+List:list(integer)) is det.
+ * 
+ * Two modelines with no typing information
+ */
+elt_det(X,L) :-
+    (   member(X,L)
+    ->  true
+    ;   false).
+
