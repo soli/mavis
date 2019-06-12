@@ -237,17 +237,17 @@ run_goal_with_determinism(det,Module,Goal) :-
     (   call_cleanup(Module:Goal, Det=true),
         (   Det == true
         ->  true
-        ;   throw(detreminism_error(Module:Goal, det))
+        ;   throw(determinism_error(Module:Goal, det))
         )
     ->  true
-    ;   throw(detreminism_error(Module:Goal, det))
+    ;   throw(determinism_error(Module:Goal, det))
     ).
 run_goal_with_determinism(semidet,Module,Goal) :-
     !,
     (   call_cleanup(Module:Goal, Det=true),
         (   Det == true
         ->  true
-        ;   throw(detreminism_error(Module:Goal, semidet))
+        ;   throw(determinism_error(Module:Goal, semidet))
         )
     ->  true
     ;   fail
