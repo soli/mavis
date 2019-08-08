@@ -169,6 +169,7 @@ pre_check_groundedness(arg('+',_,Type),Arg,0) :-
     % This will be type checked too late due to suspension
     % unless we do it now.
     % (negation avoids bindings)
+    \+ var(Arg),
     (   \+ error:has_type(Type,Arg)
     ->  throw(domain_error(Type,Arg))
     ;   true).
@@ -254,9 +255,9 @@ run_goal_with_determinism(semidet,Module,Goal) :-
     ).
 run_goal_with_determinism(multi,Module,Goal) :-
     !,
-    (   \+ call(Module:Goal)
-    ->  throw(determinism_error(Module:Goal,multi))
-    ;   call(Module:Goal)
+    (   call(Module:Goal)
+    *-> true
+    ;   throw(determinism_error(Module:Goal,multi))
     ).
 run_goal_with_determinism(_,Module,Goal) :-
     call(Module:Goal).
@@ -287,7 +288,9 @@ user:term_expansion((Head-->Body), (Head-->{TypeGoal},Body)) :-
 %       1) Add dynamic check groudedness.
 %       2) Do a separate determinism check per groudedness.
 %    b) Throw runtime error if not disjoint.
-% 
+%
+% TODO:
+% Later it would be nice if we had skeletons (ala mercury).
 user:goal_expansion(Goal,Wrapped) :-
     build_determinism_assertions(Goal,Wrapped),
     debug(mavis,'~q => ~q~n', [Goal,Wrapped]).

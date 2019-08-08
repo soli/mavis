@@ -91,6 +91,16 @@ test_demotionless(X,Y) :-
 something(X) :-
     X = 1.
 
+/**
+ * zip(+A:list(any),+B:list(any),-C:list(any)) is det.
+ * zip(-A:list(any),-B:list(any),+C:list(any)) is det.
+ * 
+ * Zip two lists into a list of pairs (or unzip, in the other two modes)
+ */
+zip([A|RestA],[B|RestB],[(A-B)|Zip]) :-
+    zip(RestA,RestB,Zip).
+zip([],[],[]).
+
 testing :-
     unit(1,_),
     something(2,_),
@@ -98,7 +108,11 @@ testing :-
     first_string(["asdf","fdsa"],_),
     test_demotion(1,_),
     (   test_demotion(1,2)
-    ;   true).
+    ;   true),
+    zip([1,2,3],[4,5,6], _),
+    % another demotion test
+    zip([1,2,3],[4,5,6],[1-4,2-5,3-6]).
+    
 
 
 
