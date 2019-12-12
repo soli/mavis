@@ -130,7 +130,7 @@ build_type_assertions(Slash, Head, TypeGoal) :-
 
     Head =.. [Name|HeadArgs],
     maplist(type_declaration, HeadArgs, ModeArgs, AllTypes),
-    exclude(=@=(the(any, _)), AllTypes, Types),
+    exclude(=(the(any, _)), AllTypes, Types),
     xfy_list(',', TypeGoal, Types).
 
 build_determinism_assertions(Goal,Wrapped) :-
